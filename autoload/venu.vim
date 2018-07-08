@@ -1,9 +1,4 @@
-" Dict of menuKey -> function
 let s:menus={}
-" List of sorted menu keys (sorted by order of function in menu)
-let s:menuKeysSorted={}
-" List of menu names
-let s:menuKeyNames={}
 function! venu#registerMenu(filetype, menu) abort
     if type('')!=type(a:filetype)
         throw "Filetype needs to be a string"
@@ -12,18 +7,19 @@ function! venu#registerMenu(filetype, menu) abort
         return
     endif
 
-    let l:menuKeys = sort(keys(a:menu), "venu#util#sortByValues", a:menu)
+    let s:menus[a:filetype] = venu#prepareMenu(a:menu)
+endfunction
 
-    let s:menus[a:filetype] = a:menu
-    let s:menuKeysSorted[a:filetype] = l:menuKeys
-    let s:menuKeyNames[a:filetype] = map(copy(l:menuKeys), {key,item ->
+function! venu#prepareMenu(menu) abort
+    let l:menuKeys = sort(keys(a:menu), "venu#util#sortByValues", a:menu)
+    let l:res = {}
+    let l:res = a:menu
+    let l:res['_keys'] = l:menuKeys
+    let l:res['_names'] = map(copy(l:menuKeys), {key,item ->
                 \substitute(
                 \substitute(item, "\\u", " \\l&", "gc"),
                 \"\^.", "\\u&", "g")})
-endfunction
-
-function! venu#register(...) abort
-
+    return l:res
 endfunction
 
 function! venu#printMenu() abort
@@ -32,11 +28,15 @@ function! venu#printMenu() abort
         return
     endif
 
+    call venu#printMenuInternal(s:menus[&ft], toupper(&ft))
+endfunction
+
+function! venu#printMenuInternal(menu, title) abort
     echohl Title
-    echo toupper(&ft) . ' commands:'
+    echo a:title . ' commands:'
     echohl None
     let l:menuIt = 0
-    for cmd in s:menuKeyNames[&ft]
+    for cmd in a:menu['_names']
         let l:menuIt = l:menuIt + 1
         echo l:menuIt . ". " . l:cmd
     endfor
@@ -59,5 +59,20 @@ function! venu#printMenu() abort
 
     redrawstatus
 
-    call s:menus[&ft][s:menuKeysSorted[&ft][l:char-1]]()
+    let l:key = a:menu['_keys'][l:char-1]
+    let l:name = a:menu['_names'][l:char-1]
+    let l:Submenu = a:menu[l:key]
+    if type(l:Submenu)==type({})
+        " Call buffered submenu
+        call venu#printMenuInternal(l:Submenu, a:title . " " . l:name)
+    else
+        let l:res = l:Submenu()
+        if type(0)==type(l:res)
+            return
+        elseif type(l:res)==type({})
+            " Buffer submenu
+            let a:menu[l:key] = venu#prepareMenu(l:res)
+            call venu#printMenuInternal(a:menu[l:key], a:title . " > " . l:name)
+        endif
+    endif
 endfunction
