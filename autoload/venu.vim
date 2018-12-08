@@ -1,52 +1,99 @@
-" Menu Dictionary structure
-" { 'menu1' : { 'name': 'name1', 'func': 'func1' },
-"   'menu2' : ... }
-let s:menus={}
+" a menu should have the following structure:
+" {
+"   name: <string>,
+"   _filetypes: <[<string>, <string>, ...],
+"   _options: [
+"    { name: <string>,
+"      cmd: <string> or <funcref> or <menu>
+"      _filetypes: [<string>, <string>, ...]
+"    }]
+let s:menus=[]
 
-function! venu#registerMenu(filetype, menu) abort
-    if type('')!=type(a:filetype)
-        throw "Filetype needs to be a string"
-    endif
-    if has_key(s:menus, a:filetype)
-        return
-    endif
-
-    let s:menus[a:filetype] = venu#prepareMenu(a:menu)
+function! venu#create(name) abort
+    let l:menu = {'name': a:name, '_filetypes': [], '_options': []}
+    return l:menu
 endfunction
 
-function! venu#prepareMenu(menu) abort
-    let l:res = {}
-    let l:res = a:menu
-
-    call map(l:res, { key, val -> {'name':
-                \substitute(
-                \substitute(key, "\\u", " \\l&", "gc"),
-                \"\^.", "\\u&", "g")
-                \, 'func': val} } )
-
-    let l:sortedKeys = sort(keys(a:menu), "venu#util#sortByValues", a:menu)
-    let l:res['_sortedKeys'] = l:sortedKeys
-
-    return l:res
-endfunction
-
-function! venu#printMenu() abort
-    if !has_key(s:menus, &ft)
-        echo "No menu available for filetype " . &ft
-        return
+function! venu#addOption(menu, name, cmd, ...) abort
+    if a:0 > 1
+        echoerr "Only optional argument allowed: <filetype> or [<filetype>, ...]"
+    elseif a:0 == 1 && type(a:1)!=v:t_string && type(a:1)!=v:t_list
+        echoerr "<filetype> must be a string or a list of strings"
+    endif
+    if a:0 > 0 && type(a:1)==v:t_string
+        let a:1 = [a:1]
     endif
 
-    call venu#printMenuInternal(s:menus[&ft], toupper(&ft))
+    call add(a:menu['_options'], { 'name': a:name, 'cmd': a:cmd,
+                                \'_filetypes': a:0 > 0 ? a:1 : []})
 endfunction
 
-function! venu#printMenuInternal(menu, title) abort
+function! venu#register(menu, ...) abort
+    if a:0 > 1
+        echoerr "Only optional argument allowed: <filetype> or [<filetype>, ...]"
+    elseif a:0 == 1 && type(a:1)!=v:t_string && type(a:1)!=v:t_list
+        echoerr "<filetype> must be a string or a list of strings"
+    endif
+
+    let l:filetypes = []
+    if a:0 > 0
+        if type(a:1)==v:t_string
+            let l:filetypes = [a:1]
+        elseif type(a:1)==v:t_list
+            let l:filetypes = a:1
+        endif
+    endif
+
+    let l:found = index(map(copy(s:menus), "v:val.name"), a:menu.name)
+
+    if l:found >= 0
+        let l:menu = get(s:menus, l:found)
+
+        " Calling register without ft specification -> show for all
+        if len(l:filetypes) == 0
+            let l:menu._filetypes = []
+        else
+            for ft in l:filetypes
+                if index(l:menu._filetypes, ft) < 0
+                    add(l:menu._filetypes, ft)
+                endif
+            endfor
+        endif
+    else
+        call extend(a:menu._filetypes, l:filetypes)
+        call add(s:menus, a:menu)
+    endif
+endfunction
+
+function! venu#print() abort
+    let l:availableMenus = filter(copy(s:menus),
+            \"len(v:val._filetypes) == 0 || index(v:val._filetypes, &ft) >= 0")
+
+    if len(l:availableMenus) == 1
+        call venu#printInternal(l:availableMenus[0].name,
+                                    \l:availableMenus[0]._options)
+    elseif len(l:availableMenus) > 1
+        call venu#printInternal("Menu", l:availableMenus)
+    else
+        echo "No menu available"
+    endif
+endfunction
+
+" Prints menu and polls user for a choice.
+" Handles both: a list of menus for submenus
+"               and a single menu given its options
+function! venu#printInternal(name, optionsOrMenus) "menu, title) abort
     echohl Title
-    echo a:title . ' commands:'
+    echo a:name
     echohl None
+
+    let l:filtered = filter(copy(a:optionsOrMenus),
+            \"len(v:val._filetypes)==0 || index(v:val._filetypes, &ft) >= 0")
+
     let l:menuIterator = 0
-    for key in a:menu['_sortedKeys']
+    for option in l:filtered
         let l:menuIterator = l:menuIterator + 1
-        echo l:menuIterator . ". " . a:menu[key].name
+        echo l:menuIterator . ". " . option.name
     endfor
     echo "0. Exit"
 
@@ -68,21 +115,24 @@ function! venu#printMenuInternal(menu, title) abort
 
     redrawstatus
 
-    let l:key = a:menu['_sortedKeys'][l:char-1]
-    let l:name = a:menu[l:key]['name'] " a:menu['_names'][l:char-1]
-    let l:Submenu = a:menu[l:key]['func']
-    if type(l:Submenu)==type({})
-        " Call buffered submenu
-        call venu#printMenuInternal(l:Submenu, a:title . " " . l:name)
-    else
-        let l:res = l:Submenu()
-        if type(0)==type(l:res)
-            return
-        elseif type(l:res)==type({})
-            " Buffer submenu
-            let a:menu[l:key]['func'] = venu#prepareMenu(l:res)
-            call venu#printMenuInternal(a:menu[l:key]['func'],
-                                        \a:title . " > " . l:name)
-        endif
+    let l:choice = l:filtered[l:char-1]
+
+    " We are dealing with a menu
+    if type(l:choice)==v:t_dict && has_key(l:choice, '_options')
+        call venu#printInternal(l:choice.name, l:choice._options)
+        return
+    endif
+
+    " It's an option!
+    if type(l:choice.cmd)==v:t_func
+        let l:result = l:choice.cmd()
+        return
+    elseif type(l:choice.cmd)==v:t_string
+        exe l:choice.cmd
+        return
+    " A submenu
+    elseif type(l:choice.cmd)==v:t_dict
+        call venu#printInternal(l:choice.cmd.name, l:choice.cmd._options)
+        return
     endif
 endfunction

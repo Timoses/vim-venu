@@ -1,1 +1,1 @@
-command! VenuPrint call venu#printMenu()
+command! VenuPrint call venu#print()
