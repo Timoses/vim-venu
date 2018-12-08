@@ -6,6 +6,7 @@
 * [Example Usage](#example-usage)
 * [Contribute](#contribute)
 * [The ^ in V̂enu ?](#the--in-V̂enu-)
+* [Alternatives](#alternatives)
 
 <!-- vim-markdown-toc -->
 
@@ -74,3 +75,7 @@ If you would like to contribute feel free to create a Pull Request or mention yo
 ## The ^ in V̂enu ?
 I personally mapped `:VenuPrint` to the `^` key on a German keyboard which is easily reachable.
 
+## Alternatives
+* [quickmenu](https://github.com/skywind3000/quickmenu.vim)
+    * opens a menu on the side, can use cmdline menu as well
+    * no support for submenus
