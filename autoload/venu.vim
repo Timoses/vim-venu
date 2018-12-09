@@ -1,3 +1,4 @@
+let s:VERSION=readfile('./version')[0]
 " a menu should have the following structure:
 " {
 "   name: <string>,
@@ -84,7 +85,7 @@ endfunction
 "               and a single menu given its items
 function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     echohl Title
-    echo a:name
+    echo a:name . " (V̂enu " . s:VERSION . ")"
     echohl None
 
     let l:filtered = filter(copy(a:itemsOrMenus),
