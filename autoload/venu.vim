@@ -1,4 +1,11 @@
-let s:VERSION=readfile('./version')[0]
+let s:venupaths =
+    \filter(split(&runtimepath,','), 'match(v:val, "vim-venu") > 0')
+if len(s:venupaths) == 0
+    let s:VERSION = 'v?'
+else
+    let s:VERSION = readfile(s:venupaths[0].'/version')[0]
+endif
+
 " a menu should have the following structure:
 " {
 "   name: <string>,

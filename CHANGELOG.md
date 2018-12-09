@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.3 (2018-12-09)
+### Fixed
+* Read the correct version file
+
 ## v0.0.2 (2018-12-09)
 ### Changed
 * Renamed `venu#addOption` to `venu#addItem`
