@@ -2,7 +2,7 @@
 " {
 "   name: <string>,
 "   _filetypes: <[<string>, <string>, ...],
-"   _options: [
+"   _items: [
 "    { name: <string>,
 "      cmd: <string> or <funcref> or <menu>
 "      _filetypes: [<string>, <string>, ...]
@@ -10,11 +10,11 @@
 let s:menus=[]
 
 function! venu#create(name) abort
-    let l:menu = {'name': a:name, '_filetypes': [], '_options': []}
+    let l:menu = {'name': a:name, '_filetypes': [], '_items': []}
     return l:menu
 endfunction
 
-function! venu#addOption(menu, name, cmd, ...) abort
+function! venu#addItem(menu, name, cmd, ...) abort
     if a:0 > 1
         echoerr "Only optional argument allowed: <filetype> or [<filetype>, ...]"
     elseif a:0 == 1 && type(a:1)!=v:t_string && type(a:1)!=v:t_list
@@ -24,7 +24,7 @@ function! venu#addOption(menu, name, cmd, ...) abort
         let a:1 = [a:1]
     endif
 
-    call add(a:menu['_options'], { 'name': a:name, 'cmd': a:cmd,
+    call add(a:menu['_items'], { 'name': a:name, 'cmd': a:cmd,
                                 \'_filetypes': a:0 > 0 ? a:1 : []})
 endfunction
 
@@ -71,7 +71,7 @@ function! venu#print() abort
 
     if len(l:availableMenus) == 1
         call venu#printInternal(l:availableMenus[0].name,
-                                    \l:availableMenus[0]._options)
+                                    \l:availableMenus[0]._items)
     elseif len(l:availableMenus) > 1
         call venu#printInternal("Menu", l:availableMenus)
     else
@@ -81,19 +81,19 @@ endfunction
 
 " Prints menu and polls user for a choice.
 " Handles both: a list of menus for submenus
-"               and a single menu given its options
-function! venu#printInternal(name, optionsOrMenus) "menu, title) abort
+"               and a single menu given its items
+function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     echohl Title
     echo a:name
     echohl None
 
-    let l:filtered = filter(copy(a:optionsOrMenus),
+    let l:filtered = filter(copy(a:itemsOrMenus),
             \"len(v:val._filetypes)==0 || index(v:val._filetypes, &ft) >= 0")
 
     let l:menuIterator = 0
-    for option in l:filtered
+    for item in l:filtered
         let l:menuIterator = l:menuIterator + 1
-        echo l:menuIterator . ". " . option.name
+        echo l:menuIterator . ". " . item.name
     endfor
     echo "0. Exit"
 
@@ -118,12 +118,12 @@ function! venu#printInternal(name, optionsOrMenus) "menu, title) abort
     let l:choice = l:filtered[l:char-1]
 
     " We are dealing with a menu
-    if type(l:choice)==v:t_dict && has_key(l:choice, '_options')
-        call venu#printInternal(l:choice.name, l:choice._options)
+    if type(l:choice)==v:t_dict && has_key(l:choice, '_items')
+        call venu#printInternal(l:choice.name, l:choice._items)
         return
     endif
 
-    " It's an option!
+    " It's a menu item!
     if type(l:choice.cmd)==v:t_func
         let l:result = l:choice.cmd()
         return
@@ -132,7 +132,7 @@ function! venu#printInternal(name, optionsOrMenus) "menu, title) abort
         return
     " A submenu
     elseif type(l:choice.cmd)==v:t_dict
-        call venu#printInternal(l:choice.cmd.name, l:choice.cmd._options)
+        call venu#printInternal(l:choice.cmd.name, l:choice.cmd._items)
         return
     endif
 endfunction

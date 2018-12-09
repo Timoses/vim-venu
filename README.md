@@ -29,7 +29,7 @@ Or use any other vim plugin manager.
 A simple example:
 ```
 let s:menu1 = venu#create('My first Venu')
-call venu#addOption(s:menu1, 'Option of first menu', 'echo "Called first option"')
+call venu#addItem(s:menu1, 'Item of first menu', 'echo "Called first item"')
 call venu#register(s:menu1)
 
 function! s:myfunction() abort
@@ -37,14 +37,14 @@ function! s:myfunction() abort
 endfunction
 
 let s:menu2 = venu#create('My second Venu')
-call venu#addOption(s:menu2, 'Call a function ref', function("s:myfunction"))
+call venu#addItem(s:menu2, 'Call a function ref', function("s:myfunction"))
 
 let s:submenu = venu#create('My awesome subVenu')
-call venu#addOption(s:submenu, 'Option 1', ':echo "First option of submenu!"')
-call venu#addOption(s:submenu, 'Option 2', ':echo "Second option of submenu!"')
+call venu#addItem(s:submenu, 'Item 1', ':echo "First item of submenu!"')
+call venu#addItem(s:submenu, 'Item 2', ':echo "Second item of submenu!"')
 
 " Add the submenu to the second menu
-call venu#addOption(s:menu2, 'Sub menu', s:submenu)
+call venu#addItem(s:menu2, 'Sub menu', s:submenu)
 
 call venu#register(s:menu2)
 ```
@@ -68,22 +68,22 @@ Creates a menu with the given name and returns a handle to it.
 
 ----
 ```
-venu#addOption(menuHandle, name, cmd [, filetype])
+venu#addItem(menuHandle, name, cmd [, filetype])
 ```
-Add an option with the given `name` to the menu with the handle `menuHandle`.
+Add an item with the given `name` to the menu with the handle `menuHandle`.
 `cmd` can be a
 * string - executed with `exe <string>`
 * FuncRef - executed with `call <FuncRef>`
 * another menu handle - a submenu is displayed
 
-`filetype` can be a string or an array of strings. This argument allows showing an option only for specific filetypes. Note that when `venu#register` is not called with the filetype the menu will not be shown. Logically, the herein specified `filetype` argument should be a subset of the filetypes passed to `venu#register`.
+`filetype` can be a string or an array of strings. This argument allows showing an item only for specific filetypes. Note that when `venu#register` is not called with the filetype the menu will not be shown. Logically, the herein specified `filetype` argument should be a subset of the filetypes passed to `venu#register`.
 
 
 ----
 ```
 venu#register(menuHandle [, filetype])
 ```
-Register the menu so that it is displayed with `venu#print`. If only one menu is available its options are directly displayed. If several menus are registered the user has to select the menu which to show the options of.
+Register the menu so that it is displayed with `venu#print`. If only one menu is available its items are directly displayed. If several menus are registered the user has to select the menu which to show the items of.
 
 ----
 ```
