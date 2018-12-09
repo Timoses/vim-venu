@@ -56,6 +56,8 @@ The following command will open the V̂enu:
 
 Calling `:VenuPrint` again will close the menu without any action.
 
+(TODO: Add a more elaborate example of usage, e.g. with menu items that are displayed in all filetypes, but the submenu items are varying depending on the filetype)
+
 ## Documentation
 
 ----
