@@ -153,7 +153,10 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     let l:menuIterator = 0
     for item in l:filtered
         let l:menuIterator = l:menuIterator + 1
-        echo l:menuIterator . ". " . item.name
+        echo l:menuIterator . ". " . item.name .
+                    \ (&verbose > 0 ? " (pos_pref: " . item.pos_pref .
+                    \ " , priority: " . item.priority . ")"
+                    \ : "")
     endfor
     echo "0. Exit"
 
