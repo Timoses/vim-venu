@@ -12,8 +12,10 @@ endif
 "   pos_pref:
 "       Positional preference. Menus/Items with a higher 'priority' win.
 "       Losers are positioned after winner.
+"       Position preference of '0' means no preference.
 "   priority:
 "       Order and positional priority. Lower numbers have higher priority.
+"       Priority of '0' means no priority.
 "   filetypes: <[<string>, <string>, ...],
 "   items: [
 "    { name: <string>,
@@ -39,14 +41,7 @@ function! venu#create(name, ...) abort
     endif
 
     let l:pos_pref = a:0 > 0 ?  a:1 : 0
-
     let l:priority = a:0 > 1 ? a:2 : 0
-    if l:priority == 0
-        let l:priority = 1000
-    elseif l:priority > 999
-        echoerr "Priority " l:priority " exceeds maximum 999"
-    endif
-
     let l:menu = {'name': a:name,
                 \'filetypes': [],
                 \'pos_pref': l:pos_pref, 'priority': l:priority,
@@ -74,19 +69,13 @@ function! venu#addItem(menu, name, cmd, ...) abort
     let l:priority = a:0 > 1 ? a:2 : 0
     let l:filetypes = a:0 > 2 ? (type(a:3) == v:t_string ? [a:3] : a:3) : []
 
-    if l:priority == 0
-        let l:priority = 1000
-    elseif l:priority > 999
-        echoerr "Priority " l:priority " exceeds maximum 999"
-    endif
-
     let l:newitem = { 'name': a:name, 'cmd': a:cmd,
                                 \'pos_pref': l:pos_pref,
                                 \'priority': l:priority,
                                 \'filetypes': l:filetypes}
 
     call add(a:menu.items, l:newitem)
-    call sort(a:menu.items, "venu#compare")
+    call venu#sort(a:menu.items)
 endfunction
 
 function! venu#register(menu, ...) abort
@@ -125,7 +114,7 @@ function! venu#register(menu, ...) abort
     else
         call extend(a:menu.filetypes, l:filetypes)
         call add(s:menus, a:menu)
-        call sort(s:menus, "venu#compare")
+        call venu#sort(s:menus)
     endif
 endfunction
 
@@ -139,8 +128,14 @@ endfunction
 "   * same cmd -> no issue
 "   * cmd differs -> only allow if items' filetypes don't collide
 function! venu#mergeMenus(target, merging)
-    let a:target.priority = min([a:target.priority, a:merging.priority])
-    let a:target.pos_pref = min([a:target.pos_pref, a:merging.pos_pref])
+    let a:target.pos_pref =
+                \ min([a:target.pos_pref, a:merging.pos_pref]) == 0 ?
+                \ max([a:target.pos_pref, a:merging.pos_pref]) :
+                \ min([a:target.pos_pref, a:merging.pos_pref])
+    let a:target.priority =
+                \ min([a:target.priority, a:merging.priority]) == 0 ?
+                \ max([a:target.priority, a:merging.priority]) :
+                \ min([a:target.priority, a:merging.priority])
     let a:target.filetypes =
                 \ uniq(sort(a:target.filetypes + a:merging.filetypes))
 
@@ -151,8 +146,14 @@ function! venu#mergeMenus(target, merging)
             let l:found = get(a:target.items, l:idx)
 
             if venu#isMenu(l:found.cmd) && venu#isMenu(merge.cmd)
-                let l:found.pos_pref = min([l:found.pos_pref, merge.pos_pref])
-                let l:found.priority = min([l:found.priority, merge.priority])
+                let l:found.pos_pref =
+                    \ min([l:found.pos_pref, merge.pos_pref]) == 0 ?
+                    \ max([l:found.pos_pref, merge.pos_pref]) :
+                    \ min([l:found.pos_pref, merge.pos_pref])
+                let l:found.priority =
+                    \ min([l:found.priority, merge.priority]) == 0 ?
+                    \ max([l:found.priority, merge.priority]) :
+                    \ min([l:found.priority, merge.priority])
                 let l:found.filetypes =
                         \ uniq(sort(l:found.filetypes + merge.filetypes))
                 call venu#mergeMenus(l:found.cmd, merge.cmd)
@@ -172,17 +173,22 @@ function! venu#mergeMenus(target, merging)
                     call add(a:target.items, merge)
                 endif
             else " cmd are equal
-                let l:found.pos_pref = min([l:found.pos_pref, merge.pos_pref])
-                let l:found.priority = min([l:found.priority, merge.priority])
+                let l:found.pos_pref =
+                    \ min([l:found.pos_pref, merge.pos_pref]) == 0 ?
+                    \ max([l:found.pos_pref, merge.pos_pref]) :
+                    \ min([l:found.pos_pref, merge.pos_pref])
+                let l:found.priority =
+                    \ min([l:found.priority, merge.priority]) == 0 ?
+                    \ max([l:found.priority, merge.priority]) :
+                    \ min([l:found.priority, merge.priority])
                 let l:found.filetypes =
                         \ uniq(sort(l:found.filetypes + merge.filetypes))
             endif
         else
             call add(a:target.items, merge)
-        endif
     endfor
 
-    call sort(a:target.items, "venu#compare")
+    call venu#sort(a:target.items)
 endfunction
 
 function! venu#print() abort
@@ -210,13 +216,13 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     let l:filtered = filter(copy(a:itemsOrMenus),
             \"len(v:val.filetypes)==0 || index(v:val.filetypes, &ft) >= 0")
 
-    let l:menuIterator = 0
+    let l:menuIterator = 1
     for item in l:filtered
-        let l:menuIterator = l:menuIterator + 1
         echo l:menuIterator . ". " . item.name .
                     \ (&verbose > 0 ? " (pos_pref: " . item.pos_pref .
                     \ " , priority: " . item.priority . ")"
                     \ : "")
+        let l:menuIterator = l:menuIterator + 1
     endfor
     echo "0. Exit"
 
@@ -260,9 +266,71 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     endif
 endfunction
 
+" Compares first by pos_pref and then by priority.
+" pos_pref and priority values of 0 are are always last.
 function! venu#compare(i1, i2)
-        return a:i1.priority == a:i2.priority ? 0 :
-                    \ a:i1.priority < a:i2.priority ? -1 : 1
+    if a:i1.pos_pref == a:i2.pos_pref
+        if a:i1.priority < a:i2.priority
+            return a:i1.priority == 0 ? 1 : -1
+        elseif a:i1.priority > a:i2.priority
+            return a:i2.priority == 0 ? -1 : 1
+        else
+            return 0
+        endif
+    elseif a:i1.pos_pref < a:i2.pos_pref
+        return a:i1.pos_pref == 0 ? 1 : -1
+    elseif a:i1.pos_pref > a:i2.pos_pref
+        return a:i2.pos_pref == 0 ? -1 : 1
+    endif
+endfunction
+
+" Tries to sort items so that each pos_pref is the items position in
+" the array. 'pos_pref' of 0 is used as a filler when no other items
+" are available.
+" In case there is no item with 'pos_pref' = 0 a dummy is used (empty menu
+" entry)
+" Example:
+"   Items with 'pos_pref' values: [5,2,0,0]
+"   Will be sorted into:          [0,2,0,x,5]
+"   x denots a dummy entry
+function! venu#sort(items)
+    if len(a:items) == 0
+        return
+    endif
+
+    call sort(a:items, "venu#compare")
+
+    let l:dummy = {'name': "", 'cmd': "", 'pos_pref': 0, 'priority': 0, 'filetypes': []}
+    let l:zeropos = filter(copy(a:items), "v:val.pos_pref == 0 && v:val != l:dummy")
+
+    let l:items = []
+    let l:idx = 1
+    for item in a:items
+        while item.pos_pref > l:idx
+            if len(l:zeropos) > 0
+                call add(l:items, l:zeropos[0])
+                let l:zeropos = l:zeropos[1:-1]
+            else
+                call add(l:items, l:dummy)
+            end
+            let l:idx = l:idx + 1
+        endwhile
+
+        if item.pos_pref > 0
+            call add(l:items, item)
+            let l:idx = l:idx + 1
+        else
+            break
+        end
+    endfor
+
+    if len(l:zeropos) > 0
+        call extend(l:items, l:zeropos)
+    endif
+
+    call remove(a:items, 0, -1)
+    call extend(a:items, l:items)
+
 endfunction
 
 function! venu#isMenu(object)
