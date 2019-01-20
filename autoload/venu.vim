@@ -85,7 +85,8 @@ function! venu#addItem(menu, name, cmd, ...) abort
                                 \'priority': l:priority,
                                 \'filetypes': l:filetypes}
 
-    call venu#addSorted(a:menu['items'], l:newitem)
+    call add(a:menu.items, l:newitem)
+    call sort(a:menu.items, "venu#compare")
 endfunction
 
 function! venu#register(menu, ...) abort
@@ -119,10 +120,69 @@ function! venu#register(menu, ...) abort
                 endif
             endfor
         endif
+
+        call venu#mergeMenus(l:menu, a:menu)
     else
         call extend(a:menu.filetypes, l:filetypes)
-        call venu#addSorted(s:menus, a:menu)
+        call add(s:menus, a:menu)
+        call sort(s:menus, "venu#compare")
     endif
+endfunction
+
+" Merges 'merging' into 'target'.
+" Following merging rules exist:
+"   * priority: The higher priority (lower number) is chosen
+"   * pos_pref: The lower pos_pref is chosen
+"   * filetypes: are merged together
+" For items with name collision:
+"   * priority, pos_pref and filetypes of the item are adjusted as above
+"   * same cmd -> no issue
+"   * cmd differs -> only allow if items' filetypes don't collide
+function! venu#mergeMenus(target, merging)
+    let a:target.priority = min([a:target.priority, a:merging.priority])
+    let a:target.pos_pref = min([a:target.pos_pref, a:merging.pos_pref])
+    let a:target.filetypes =
+                \ uniq(sort(a:target.filetypes + a:merging.filetypes))
+
+    for merge in a:merging.items
+        " Entry with same name exists?
+        let l:idx = index(map(copy(a:target.items), "v:val.name"), merge['name'])
+        if l:idx >= 0
+            let l:found = get(a:target.items, l:idx)
+
+            if venu#isMenu(l:found.cmd) && venu#isMenu(merge.cmd)
+                let l:found.pos_pref = min([l:found.pos_pref, merge.pos_pref])
+                let l:found.priority = min([l:found.priority, merge.priority])
+                let l:found.filetypes =
+                        \ uniq(sort(l:found.filetypes + merge.filetypes))
+                call venu#mergeMenus(l:found.cmd, merge.cmd)
+            elseif l:found.cmd != merge.cmd
+                " Trying to add an item with the same name but a different cmd
+                " Only allow this if no overlap of filetypes
+                let l:samefts = []
+                for ft in merge.filetypes
+                    let l:sameftIdx = index(l:found.filetypes, ft)
+                    if l:sameftIdx >= 0
+                        call add(l:samefts, get(l:found.filetypes, l:sameftIdx))
+                    endif
+                endfor
+                if l:found.filetypes == merge.filetypes || len(l:samefts) > 0
+                    echoerr "Collision of menu items: Same name used: \"" . merge.name . "\" for the same filetypes \"" . l:samefts
+                else
+                    call add(a:target.items, merge)
+                endif
+            else " cmd are equal
+                let l:found.pos_pref = min([l:found.pos_pref, merge.pos_pref])
+                let l:found.priority = min([l:found.priority, merge.priority])
+                let l:found.filetypes =
+                        \ uniq(sort(l:found.filetypes + merge.filetypes))
+            endif
+        else
+            call add(a:target.items, merge)
+        endif
+    endfor
+
+    call sort(a:target.items, "venu#compare")
 endfunction
 
 function! venu#print() abort
@@ -194,25 +254,22 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
         exe l:choice.cmd
         return
     " A submenu
-    elseif type(l:choice.cmd)==v:t_dict
+    elseif venu#isMenu(l:choice.cmd)
         call venu#printInternal(l:choice.cmd.name, l:choice.cmd.items)
         return
     endif
 endfunction
 
-function! venu#addSorted(items, item)
-    " pos_pref ranges from 1-x, with 0 meaning no preference
-    let l:idx = a:item.pos_pref == 0 ? 0 : a:item.pos_pref
-
-    " Item should be inserted at l:idx unless the current item
-    " at l:idx has a higher priority. Then item pos_ref is ignored and item is
-    " inserted before the next item with a lower priority.
-    for item in a:items[l:idx : -1]
-        if a:item.priority < item.priority
-            break
-        endif
-        let l:idx = l:idx + 1
-    endfor
-
-    call insert(a:items, a:item, l:idx)
+function! venu#compare(i1, i2)
+        return a:i1.priority == a:i2.priority ? 0 :
+                    \ a:i1.priority < a:i2.priority ? -1 : 1
 endfunction
+
+function! venu#isMenu(object)
+    return type(a:object)==v:t_dict && has_key(a:object, 'name')
+            \&& has_key(a:object, 'pos_pref') && type(a:object.pos_pref)==v:t_number
+            \&& has_key(a:object, 'priority') && type(a:object.priority)==v:t_number
+            \&& has_key(a:object, 'filetypes') && type(a:object.filetypes)==v:t_list
+            \&& has_key(a:object, 'items') && type(a:object.items)==v:t_list
+endfunction
+
