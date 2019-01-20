@@ -3,7 +3,11 @@
 <!-- vim-markdown-toc GFM -->
 
 * [Install](#install)
+* [Features](#features)
 * [Example Usage](#example-usage)
+    * [Simple example](#simple-example)
+    * [Filetype example](#filetype-example)
+    * [Opening the menu in vim](#opening-the-menu-in-vim)
 * [Documentation](#documentation)
 * [Contribute](#contribute)
 * [The ^ in V̂enu ?](#the--in-V̂enu-)
@@ -24,9 +28,18 @@ Plug 'Timoses/vim-venu'
 
 Or use any other vim plugin manager.
 
+
+## Features
+
+* **Submenus**: Menus can contain any number of submenus.
+* **Merging of menus submenus**: If a menu is registered and has the same `name` as an already registered menu and there is a filetype collision (meaning both submenus or items have at least one filetype in common) then its contents including its submenus are merged together. This allows creating very general commands within a menu which can be extended by more specific commands for various filetypes.
+* **Filetype specific commands**: Each menu and menu item can be assigned a filetype or a list of filetypes. This allows creating different menus for different filetypes.
+* **Position preference and ordering priority**: Each menu and menu item can be assigned a preference for its position in the menu and an ordering priority. Positions are not guaranteed. If a position is assigned to more than one entry then all entries for that position are ordered by each entry's priority and are listed consecutively. This may result in subsequent entries not meeting their preferred positions. Empty entries may appear in case a menu or menu item has a position which is higher than one above the previous menu or menu item.
+
 ## Example Usage
 
-A simple example:
+### Simple example
+This example showcases the various `cmd` types that can be used in `venu#addItem`.
 ```
 let s:menu1 = venu#create('My first Venu')
 call venu#addItem(s:menu1, 'Item of first menu', 'echo "Called first item"')
@@ -49,6 +62,30 @@ call venu#addItem(s:menu2, 'Sub menu', s:submenu)
 call venu#register(s:menu2)
 ```
 
+### Filetype example
+In this example the menu `Build` is filled from different places (i.e. its contents are merged). Each filetype executes different commands for `Compile` and `Compile & Run`. `ft1` displays `Compile` first (`pos_pref=1`) while `ft2` displays `Compile & Run` first. However, both filetypes use the same `Build -> Execute` command.
+```
+.vim/ftplugin/ft1
+    let s:build = venu#create('Build')
+    call venu#addItem(s:build, 'Compile', 'echo "compile ft1"', 1, 0, &ft)
+    call venu#addItem(s:build, 'Compile & Run', 'echo "compile & run ft1"', 2, 0, &ft)
+    call venu#register(s:build)
+
+.vim/ftplugin/ft2
+    let s:build = venu#create('Build')
+    call venu#addItem(s:build, 'Compile', 'echo "compile ft2"', 2, 0, &ft)
+    call venu#addItem(s:build, 'Compile & Run', 'echo "compile & run ft2"', 1, 0, &ft)
+    call venu#register(s:build)
+
+.vimrc:
+    let s:build = venu#create('Build')
+    call venu#addItem(s:build, 'Execute', 'echo "execute"')
+    call venu#register(s:build)
+
+```
+
+### Opening the menu in vim
+
 The following command will open the V̂enu:
 ```
 :VenuPrint
@@ -56,40 +93,55 @@ The following command will open the V̂enu:
 
 Calling `:VenuPrint` again will close the menu without any action.
 
-(TODO: Add a more elaborate example of usage, e.g. with menu items that are displayed in all filetypes, but the submenu items are varying depending on the filetype)
+
 
 ## Documentation
 
 ----
 ```
-venu#create(name)
+venu#create(name, [pos_pref, priority])
 ```
 Creates a menu with the given name and returns a handle to it.
 
+Optionally may contain a `pos_pref` (positional preference) with a `priority` value.
+Values of `0` are ignored.
+
 ----
 ```
-venu#addItem(menuHandle, name, cmd [, filetype])
+venu#addItem(menuHandle, name, cmd [,pos_pref, priority, filetype])
 ```
-Add an item with the given `name` to the menu with the handle `menuHandle`.
+Add a menu item with the given `name` to the menu with the handle `menuHandle`.
 `cmd` can be a
 * string - executed with `exe <string>`
 * FuncRef - executed with `call <FuncRef>`
 * another menu handle - a submenu is displayed
 
-`filetype` can be a string or an array of strings. This argument allows showing an item only for specific filetypes. Note that when `venu#register` is not called with the filetype the menu will not be shown. Logically, the herein specified `filetype` argument should be a subset of the filetypes passed to `venu#register`.
+`pos_pref` is the positional preference with given `priority`. Values of `0` are ignored.
+
+`filetype` can be a string or an array of strings. This argument allows showing an item only for specific filetypes. Note that when `venu#register` is called with filetypes which do not contain the `filetype` specified here then the menu will not be displayed for that `filetype`. Logically, the herein specified `filetype` argument should be a subset of the filetypes passed to `venu#register`.
 
 
 ----
 ```
 venu#register(menuHandle [, filetype])
 ```
-Register the menu so that it is displayed with `venu#print`. If only one menu is available its items are directly displayed. If several menus are registered the user has to select the menu which to show the items of.
+Register the menu so that it is displayed with `venu#print`.
+
+If only one menu was registered its items are displayed directly. If several menus were registered the user can select the (sub)menu.
+
+If a menu with the same name exists already it (and all its contained submenus) will be merged together.
 
 ----
 ```
 venu#print()
 ```
 Prints the menu.
+
+----
+```
+venu#unregisterAll()
+```
+Unregisters all menus.
 
 
 ## Contribute
