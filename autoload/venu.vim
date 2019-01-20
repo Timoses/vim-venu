@@ -63,7 +63,7 @@ function! venu#register(menu, ...) abort
         else
             for ft in l:filetypes
                 if index(l:menu._filetypes, ft) < 0
-                    add(l:menu._filetypes, ft)
+                    call add(l:menu.filetypes, ft)
                 endif
             endfor
         endif
