@@ -12,7 +12,15 @@ endif
 "   filetypes: <[<string>, <string>, ...],
 "   items: [
 "    { name: <string>,
+"           Name of the menu.
 "      cmd: <string> or <funcref> or <menu>
+"           Cmd to be executed or menu to be displayed when selecting this
+"           item.
+"      pos_pref: <number>
+"           Positional preference. Items with a higher 'priority' win. Losers
+"           are position after winner.
+"      priority: <number>
+"           Order and positional priority. Lower numbers have higher priority.
 "      filetypes: [<string>, <string>, ...]
 "    }]
 let s:menus=[]
@@ -22,18 +30,52 @@ function! venu#create(name) abort
     return l:menu
 endfunction
 
+" Optional arguments '...': pos_pref, priority, filetypes
 function! venu#addItem(menu, name, cmd, ...) abort
-    if a:0 > 1
-        echoerr "Only optional argument allowed: <filetype> or [<filetype>, ...]"
-    elseif a:0 == 1 && type(a:1)!=v:t_string && type(a:1)!=v:t_list
-        echoerr "<filetype> must be a string or a list of strings"
-    endif
-    if a:0 > 0 && type(a:1)==v:t_string
-        let a:1 = [a:1]
+    if a:0 > 3
+        echoerr "Only optional argument allowed: pos_pref, priority and <filetype> or [<filetype>, ...]"
     endif
 
-    call add(a:menu['items'], { 'name': a:name, 'cmd': a:cmd,
-                                \'filetypes': a:0 > 0 ? a:1 : []})
+    if a:0 > 0 && type(a:1)!=v:t_number
+        echoerr "Positional preference pos_pref has to be a number"
+    endif
+    if a:0 > 1 && type(a:2)!=v:t_number
+        echoerr "Priority has to be a number"
+    endif
+    if a:0 == 3 && type(a:3)!=v:t_string && type(a:3)!=v:t_list
+        echoerr "<filetype> must be a string or a list of strings"
+    endif
+
+    let l:pos_pref = a:0 > 0 ?  a:1 : 0
+    let l:priority = a:0 > 1 ? a:2 : 0
+    let l:filetypes = a:0 > 2 ? (type(a:3) == v:t_string ? [a:3] : a:3) : []
+
+    if l:priority == 0
+        let l:priority = 1000
+    elseif l:priority > 999
+        echoerr "Priority " l:priority " exceeds maximum 999"
+    endif
+
+    " pos_pref ranges from 1-x, with 0 meaning no preference
+    let l:idx = l:pos_pref == 0 ? 0 : l:pos_pref
+
+    " Item should be inserted at l:idx unless the current item
+    " at l:idx has a higher priority. Then item pos_ref is ignored and item is
+    " inserted before the next item with a lower priority.
+    for item in a:menu['items'][l:idx : -1]
+        if l:priority < item.priority
+            break
+        endif
+        let l:idx = l:idx + 1
+    endfor
+
+    let l:newitem = { 'name': a:name, 'cmd': a:cmd,
+                                \'pos_pref': l:pos_pref,
+                                \'priority': l:priority,
+                                \'filetypes': l:filetypes}
+
+
+    call insert(a:menu['items'], l:newitem, l:idx)
 endfunction
 
 function! venu#register(menu, ...) abort
