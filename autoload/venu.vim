@@ -9,16 +9,16 @@ endif
 " a menu should have the following structure:
 " {
 "   name: <string>,
-"   _filetypes: <[<string>, <string>, ...],
-"   _items: [
+"   filetypes: <[<string>, <string>, ...],
+"   items: [
 "    { name: <string>,
 "      cmd: <string> or <funcref> or <menu>
-"      _filetypes: [<string>, <string>, ...]
+"      filetypes: [<string>, <string>, ...]
 "    }]
 let s:menus=[]
 
 function! venu#create(name) abort
-    let l:menu = {'name': a:name, '_filetypes': [], '_items': []}
+    let l:menu = {'name': a:name, 'filetypes': [], 'items': []}
     return l:menu
 endfunction
 
@@ -32,8 +32,8 @@ function! venu#addItem(menu, name, cmd, ...) abort
         let a:1 = [a:1]
     endif
 
-    call add(a:menu['_items'], { 'name': a:name, 'cmd': a:cmd,
-                                \'_filetypes': a:0 > 0 ? a:1 : []})
+    call add(a:menu['items'], { 'name': a:name, 'cmd': a:cmd,
+                                \'filetypes': a:0 > 0 ? a:1 : []})
 endfunction
 
 function! venu#register(menu, ...) abort
@@ -59,27 +59,27 @@ function! venu#register(menu, ...) abort
 
         " Calling register without ft specification -> show for all
         if len(l:filetypes) == 0
-            let l:menu._filetypes = []
+            let l:menu.filetypes = []
         else
             for ft in l:filetypes
-                if index(l:menu._filetypes, ft) < 0
+                if index(l:menu.filetypes, ft) < 0
                     call add(l:menu.filetypes, ft)
                 endif
             endfor
         endif
     else
-        call extend(a:menu._filetypes, l:filetypes)
+        call extend(a:menu.filetypes, l:filetypes)
         call add(s:menus, a:menu)
     endif
 endfunction
 
 function! venu#print() abort
     let l:availableMenus = filter(copy(s:menus),
-            \"len(v:val._filetypes) == 0 || index(v:val._filetypes, &ft) >= 0")
+            \"len(v:val.filetypes) == 0 || index(v:val.filetypes, &ft) >= 0")
 
     if len(l:availableMenus) == 1
         call venu#printInternal(l:availableMenus[0].name,
-                                    \l:availableMenus[0]._items)
+                                    \l:availableMenus[0].items)
     elseif len(l:availableMenus) > 1
         call venu#printInternal("Menu", l:availableMenus)
     else
@@ -96,7 +96,7 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     echohl None
 
     let l:filtered = filter(copy(a:itemsOrMenus),
-            \"len(v:val._filetypes)==0 || index(v:val._filetypes, &ft) >= 0")
+            \"len(v:val.filetypes)==0 || index(v:val.filetypes, &ft) >= 0")
 
     let l:menuIterator = 0
     for item in l:filtered
@@ -126,8 +126,8 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
     let l:choice = l:filtered[l:char-1]
 
     " We are dealing with a menu
-    if type(l:choice)==v:t_dict && has_key(l:choice, '_items')
-        call venu#printInternal(l:choice.name, l:choice._items)
+    if type(l:choice)==v:t_dict && has_key(l:choice, 'items')
+        call venu#printInternal(l:choice.name, l:choice.items)
         return
     endif
 
@@ -140,7 +140,7 @@ function! venu#printInternal(name, itemsOrMenus) "menu, title) abort
         return
     " A submenu
     elseif type(l:choice.cmd)==v:t_dict
-        call venu#printInternal(l:choice.cmd.name, l:choice.cmd._items)
+        call venu#printInternal(l:choice.cmd.name, l:choice.cmd.items)
         return
     endif
 endfunction
