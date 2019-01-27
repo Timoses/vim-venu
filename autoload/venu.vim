@@ -157,9 +157,7 @@ function! venu#mergeMenus(target, merging)
                 let l:found.filetypes =
                         \ uniq(sort(l:found.filetypes + merge.filetypes))
                 call venu#mergeMenus(l:found.cmd, merge.cmd)
-            elseif l:found.cmd != merge.cmd
-                " Trying to add an item with the same name but a different cmd
-                " Only allow this if no overlap of filetypes
+            else
                 let l:samefts = []
                 for ft in merge.filetypes
                     let l:sameftIdx = index(l:found.filetypes, ft)
@@ -167,25 +165,39 @@ function! venu#mergeMenus(target, merging)
                         call add(l:samefts, get(l:found.filetypes, l:sameftIdx))
                     endif
                 endfor
-                if l:found.filetypes == merge.filetypes || len(l:samefts) > 0
-                    echoerr "Collision of menu items: Same name used: \"" . merge.name . "\" for the same filetypes \"" . l:samefts
+
+                " Filetype collision?
+                if len(l:samefts) > 0 || l:found.filetypes == merge.filetypes
+                    if l:found.cmd != merge.cmd
+                        echoerr "Collision of menu items: Same name used: \"" . merge.name . "\" for the same filetypes \"" . l:samefts
+                    else
+                        " TODO: Could also create a new item which is valid
+                        " only for the l:samefts and do below merging.
+                        " Then, for the other filetypes of each item, the
+                        " settings can remain the same (remove l:samefts from
+                        " l:found and merge items' filetypes)
+                        let l:found.pos_pref =
+                            \ min([l:found.pos_pref, merge.pos_pref]) == 0 ?
+                            \ max([l:found.pos_pref, merge.pos_pref]) :
+                            \ min([l:found.pos_pref, merge.pos_pref])
+                        let l:found.priority =
+                            \ min([l:found.priority, merge.priority]) == 0 ?
+                            \ max([l:found.priority, merge.priority]) :
+                            \ min([l:found.priority, merge.priority])
+                        let l:found.filetypes =
+                            \ uniq(sort(l:found.filetypes + merge.filetypes))
+                    endif
+
                 else
+                    " If no filetype collision exists, merging these
+                    " items won't matter as both items will never be displayed
+                    " together.
                     call add(a:target.items, merge)
                 endif
-            else " cmd are equal
-                let l:found.pos_pref =
-                    \ min([l:found.pos_pref, merge.pos_pref]) == 0 ?
-                    \ max([l:found.pos_pref, merge.pos_pref]) :
-                    \ min([l:found.pos_pref, merge.pos_pref])
-                let l:found.priority =
-                    \ min([l:found.priority, merge.priority]) == 0 ?
-                    \ max([l:found.priority, merge.priority]) :
-                    \ min([l:found.priority, merge.priority])
-                let l:found.filetypes =
-                        \ uniq(sort(l:found.filetypes + merge.filetypes))
             endif
         else
             call add(a:target.items, merge)
+        endif
     endfor
 
     call venu#sort(a:target.items)
