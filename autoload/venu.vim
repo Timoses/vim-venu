@@ -118,6 +118,10 @@ function! venu#register(menu, ...) abort
     endif
 endfunction
 
+function! venu#unregisterAll()
+    call remove(s:menus, 0, -1)
+endfunction
+
 " Merges 'merging' into 'target'.
 " Following merging rules exist:
 "   * priority: The higher priority (lower number) is chosen
