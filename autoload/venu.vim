@@ -17,19 +17,28 @@ endif
 "       Order and positional priority. Lower numbers have higher priority.
 "       Priority of '0' means no priority.
 "   filetypes: <[<string>, <string>, ...],
-"   items: [
-"    { name: <string>,
-"           Name of the menu.
-"      cmd: <string> or <funcref> or <menu>
-"           Cmd to be executed or menu to be displayed when selecting this
-"           item.
-"      pos_pref: <number>
-"           See above menu property 'pos_pref'.
-"      priority: <number>
-"           See above menu property 'priority'.
-"      filetypes: [<string>, <string>, ...]
-"    }]
+"   items: [{
+"     name: <string>,
+"         Name of the menu.
+"     cmd: <string> or <funcref> or <menu>
+"         Cmd to be executed or menu to be displayed when selecting this
+"         item.
+"     pos_pref: <number>
+"         See above menu property 'pos_pref'.
+"     priority: <number>
+"         See above menu property 'priority'.
+"     filetypes: [<string>, <string>, ...],
+"     _id
+"     }],
+"    _id
+" }
 let s:menus=[]
+
+let s:currentId=0
+function! s:getId() abort
+    let s:currentId = s:currentId + 1
+    return s:currentId
+endfunction
 
 " Optional arguments '...': pos_pref, priority
 function! venu#create(name, ...) abort
@@ -45,7 +54,8 @@ function! venu#create(name, ...) abort
     let l:menu = {'name': a:name,
                 \'filetypes': [],
                 \'pos_pref': l:pos_pref, 'priority': l:priority,
-                \'items': []}
+                \'items': [],
+                \'_id': s:getId()}
     return l:menu
 endfunction
 
@@ -72,7 +82,8 @@ function! venu#addItem(menu, name, cmd, ...) abort
     let l:newitem = { 'name': a:name, 'cmd': a:cmd,
                                 \'pos_pref': l:pos_pref,
                                 \'priority': l:priority,
-                                \'filetypes': l:filetypes}
+                                \'filetypes': l:filetypes,
+                                \'_id': s:getId()}
 
     call add(a:menu.items, l:newitem)
     call s:sort(a:menu.items)
