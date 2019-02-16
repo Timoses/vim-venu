@@ -40,8 +40,10 @@ V̂enu (see `venu#native#createVenuFromMenu`). Menu dictionaries returned by thi
 by `shortcut`).
 - `desc`: Right aligned text of the menu entry, if there is one. This is the
 portion following `<TAB>` special character in the menu entry name.
-- `priority`: Priority of the menu entry. Menus with a higher priority go more
-to the right.
+- `priority`: Priority of the menu entry. If two menus are in the same level,
+the one with greater priority value will be closer to the right side (see `:help
+menu-property`). This is similar to V̂enu's use of priority where menus with greater
+priority values are rendered closer to the bottom.
 - `shortcut`: Shortcut letter denoted with a preceding ampersand (&) in the
 menu name.
 - `submenus`: A list of menu entry dictionaries for submenus.
