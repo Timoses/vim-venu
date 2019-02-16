@@ -17,7 +17,7 @@
 
 V̂enu is a vim plugin that allows the definition of menus for different filetypes removing the need to remember commands and key combinations.
 
-<a href="https://asciinema.org/a/cqN0nkYnxmXFXW2EeY3Fkpv9Y"><img width=400 src="https://asciinema.org/a/cqN0nkYnxmXFXW2EeY3Fkpv9Y.png"></img></a>
+[![asciicast](https://asciinema.org/a/227971.svg)](https://asciinema.org/a/227971)
 
 ## Install
 
