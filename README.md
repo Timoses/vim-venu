@@ -40,7 +40,7 @@ Or use any other vim plugin manager.
 
 ### Simple example
 This example showcases the various `cmd` types that can be used in `venu#addItem`.
-```
+```vim
 let s:menu1 = venu#create('My first Venu')
 call venu#addItem(s:menu1, 'Item of first menu', 'echo "Called first item"')
 call venu#register(s:menu1)
@@ -64,14 +64,14 @@ call venu#register(s:menu2)
 
 ### Filetype example
 In this example the menu `Build` is filled from different places (i.e. its contents are merged). Each filetype executes different commands for `Compile` and `Compile & Run`. `ft1` displays `Compile` first (`pos_pref=1`) while `ft2` displays `Compile & Run` first. However, both filetypes use the same `Build -> Execute` command.
-```
-.vim/ftplugin/ft1
+```vim
+.vim/ftplugin/ft1:
     let s:build = venu#create('Build')
     call venu#addItem(s:build, 'Compile', 'echo "compile ft1"', 1, 0, &ft)
     call venu#addItem(s:build, 'Compile & Run', 'echo "compile & run ft1"', 2, 0, &ft)
     call venu#register(s:build)
 
-.vim/ftplugin/ft2
+.vim/ftplugin/ft2:
     let s:build = venu#create('Build')
     call venu#addItem(s:build, 'Compile', 'echo "compile ft2"', 2, 0, &ft)
     call venu#addItem(s:build, 'Compile & Run', 'echo "compile & run ft2"', 1, 0, &ft)
@@ -87,7 +87,7 @@ In this example the menu `Build` is filled from different places (i.e. its conte
 ### Opening the menu in vim
 
 The following command will open the V̂enu:
-```
+```vim
 :VenuPrint
 ```
 
@@ -98,7 +98,7 @@ Calling `:VenuPrint` again will close the menu without any action.
 ## Documentation
 
 ----
-```
+```vim
 venu#create(name, [pos_pref, priority])
 ```
 Creates a menu with the given name and returns a handle to it.
@@ -107,7 +107,7 @@ Optionally may contain a `pos_pref` (positional preference) with a `priority` va
 Values of `0` are ignored.
 
 ----
-```
+```vim
 venu#addItem(menuHandle, name, cmd [,pos_pref, priority, filetype])
 ```
 Add a menu item with the given `name` to the menu with the handle `menuHandle`.
@@ -122,7 +122,7 @@ Add a menu item with the given `name` to the menu with the handle `menuHandle`.
 
 
 ----
-```
+```vim
 venu#register(menuHandle [, filetype])
 ```
 Register the menu so that it is displayed with `venu#print`.
@@ -132,13 +132,13 @@ If only one menu was registered its items are displayed directly. If several men
 If a menu with the same name exists already it (and all its contained submenus) will be merged together.
 
 ----
-```
+```vim
 venu#print()
 ```
 Prints the menu.
 
 ----
-```
+```vim
 venu#unregisterAll()
 ```
 Unregisters all menus.
