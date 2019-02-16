@@ -28,12 +28,12 @@ venu#native#parseMenu([menu_cmd])
 Parses output of vim menu printing command and returns a list of menu
 dictionaries.
 
-Optionally takes menu command `menu_cmd` to use for printing vim menus. By
-default, the value of `g:venu_native_menu_cmd` is used if provided, otherwise
-`amenu` is used.
+Optional argument `menu_cmd` controls which command is used to retrieve vim's
+native menu. By default, the value of `g:venu_native_menu_cmd` is used if provided,
+otherwise `amenu` is used.
 
-Note that returned menu dictionaries have different format than those used by
-V̂enu. Menu dictionaries returned by this function have these keys:
+Note that returned menu dictionaries have a different format than those used by
+V̂enu (see `venu#native#createVenuFromMenu`). Menu dictionaries returned by this function have these keys:
 
 - `name`: Name of the menu entry. It doesn't include right aligned text
 (provided by `desc`) or ampersand preceding the shortcut character (provided
@@ -45,6 +45,7 @@ to the right.
 - `shortcut`: Shortcut letter denoted with a preceding ampersand (&) in the
 menu name.
 - `submenus`: A list of menu entry dictionaries for submenus.
+A submenu entry has the same keys as its parent menu (i.e. this list).
 - `mode`: A dictionary of modes (`n`, `v`, `i`...) defined for this menu. Each
 mode value also keeps a dictionary where `flag` keeps the flag of mode and
 `cmd` keeps the command that will be executed when the menu entry is selected.
@@ -85,7 +86,7 @@ done through menu filtering functions. A menu filter function is expected to
 take two arguments: `key`, the index of menu entry, and `menu`, the menu
 dictionary. If the function returns true, `menu` will be imported. `menu`
 argument can be modified inside this function to modify any properties of the
-menu entry before importing. See `venu#native#import` for all properties
+menu entry before importing. See `venu#native#parseMenu` for all properties
 defined in a menu dictionary.
 
 This function will be called for only menus on the root level. It is left to
