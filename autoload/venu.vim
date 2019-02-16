@@ -208,40 +208,58 @@ function! s:mergeMenus(target, merging)
 endfunction
 
 function! venu#print() abort
+    let s:printCallback = get(g:, "venu_print_callback",
+                \ function("s:print"))
+    let s:selectCallback = get(g:, "venu_select_callback",
+                \ function("s:select"))
+    let s:formatEntryCallback = get(g:, "venu_format_entry_callback",
+                \ function("s:formatEntry"))
+
     let l:availableMenus = filter(copy(s:menus),
             \"len(v:val.filetypes) == 0 || index(v:val.filetypes, &ft) >= 0")
 
     if len(l:availableMenus) == 1
-        call s:printInternal(l:availableMenus[0].name,
+        call s:startVenu(l:availableMenus[0].name,
                                     \l:availableMenus[0].items)
     elseif len(l:availableMenus) > 1
-        call s:printInternal("Menu", l:availableMenus)
+        call s:startVenu("Menu", l:availableMenus)
     else
         echo "No menu available"
     endif
 endfunction
 
-" Prints menu and polls user for a choice.
-" Handles both: a list of menus for submenus
-"               and a single menu given its items
-function! s:printInternal(name, itemsOrMenus) "menu, title) abort
+function! s:startVenu(name, itemsOrMenus)
+    let l:choices = filter(copy(a:itemsOrMenus),
+            \"len(v:val.filetypes)==0 || index(v:val.filetypes, &ft) >= 0")
+    call s:printCallback(a:name, l:choices)
+    let l:choice = s:selectCallback(l:choices)
+
+    if type(l:choice) != v:t_number
+        call s:executeSelection(l:choice)
+    endif
+endfunction
+
+function! s:print(name, itemsOrMenus) abort
     echohl Title
     echo a:name . " (V̂enu " . s:VERSION . ")"
     echohl None
 
-    let l:filtered = filter(copy(a:itemsOrMenus),
-            \"len(v:val.filetypes)==0 || index(v:val.filetypes, &ft) >= 0")
-
     let l:menuIterator = 1
-    for item in l:filtered
-        echo l:menuIterator . ". " . item.name .
-                    \ (&verbose > 0 ? " (pos_pref: " . item.pos_pref .
-                    \ " , priority: " . item.priority . ")"
-                    \ : "")
+    for item in a:itemsOrMenus
+        echo s:formatEntryCallback(l:menuIterator, item)
         let l:menuIterator = l:menuIterator + 1
     endfor
     echo "0. Exit"
+endfunction
 
+function! s:formatEntry(rowNum, entry)
+        return a:rowNum . ". " . a:entry.name .
+                    \ (&verbose > 0 ? " (pos_pref: " . a:entry.pos_pref .
+                    \ " , priority: " . a:entry.priority . ")"
+                    \ : "")
+endfunction
+
+function! s:select(choices)
     let l:char = nr2char(getchar())
 
     if l:char == "\<ESC>" || l:char == 0
@@ -250,7 +268,7 @@ function! s:printInternal(name, itemsOrMenus) "menu, title) abort
     endif
 
     " Poll input as long as input invalid
-    while l:char-1 < 0 || l:char-1 >= l:menuIterator
+    while l:char <= 0 || l:char > len(a:choices)
         let l:char = nr2char(getchar())
         if l:char == "\<ESC>" || l:char == 0
             redrawstatus
@@ -260,27 +278,29 @@ function! s:printInternal(name, itemsOrMenus) "menu, title) abort
 
     redrawstatus
 
-    let l:choice = l:filtered[l:char-1]
+    return a:choices[l:char-1]
+endfunction
 
-    " We are dealing with a menu
-    if type(l:choice)==v:t_dict && has_key(l:choice, 'items')
-        call s:printInternal(l:choice.name, l:choice.items)
+function! s:executeSelection(choice)
+    if s:isMenu(a:choice)
+        call s:startVenu(a:choice.name, a:choice.items)
         return
     endif
 
     " It's a menu item!
-    if type(l:choice.cmd)==v:t_func
-        let l:result = l:choice.cmd()
+    if type(a:choice.cmd)==v:t_func
+        let l:result = a:choice.cmd()
         return
-    elseif type(l:choice.cmd)==v:t_string
-        exe l:choice.cmd
+    elseif type(a:choice.cmd)==v:t_string
+        exe a:choice.cmd
         return
     " A submenu
-    elseif s:isMenu(l:choice.cmd)
-        call s:printInternal(l:choice.cmd.name, l:choice.cmd.items)
+    elseif s:isMenu(a:choice.cmd)
+        call s:startVenu(a:choice.cmd.name, a:choice.cmd.items)
         return
     endif
 endfunction
+
 
 " Compares first by pos_pref and then by priority.
 " pos_pref and priority values of 0 are are always last.
