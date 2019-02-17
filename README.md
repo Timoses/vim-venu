@@ -35,6 +35,7 @@ Or use any other vim plugin manager.
 * **Merging of menus submenus**: If a menu is registered and has the same `name` as an already registered menu and there is a filetype collision (meaning both submenus or items have at least one filetype in common) then its contents including its submenus are merged together. This allows creating very general commands within a menu which can be extended by more specific commands for various filetypes.
 * **Filetype specific commands**: Each menu and menu item can be assigned a filetype or a list of filetypes. This allows creating different menus for different filetypes.
 * **Position preference and ordering priority**: Each menu and menu item can be assigned a preference for its position in the menu and an ordering priority. Positions are not guaranteed. If a position is assigned to more than one entry then all entries for that position are ordered by each entry's priority and are listed consecutively. This may result in subsequent entries not meeting their preferred positions. Empty entries may appear in case a menu or menu item has a position which is higher than one above the previous menu or menu item.
+* **Import of native vim menus**: Native menus can be imported to Venu. See [documentation](./docs/import.md) for more details.
 
 ## Example Usage
 
