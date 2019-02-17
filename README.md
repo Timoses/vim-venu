@@ -10,6 +10,7 @@
     * [Opening the menu in vim](#opening-the-menu-in-vim)
 * [Documentation](#documentation)
 * [Contribute](#contribute)
+    * [Extending V̂enu](#extending-V̂enu)
 * [The ^ in V̂enu ?](#the--in-V̂enu-)
 * [Alternatives](#alternatives)
 
@@ -148,6 +149,15 @@ Unregisters all menus.
 ## Contribute
 
 If you would like to contribute feel free to create a Pull Request or mention your ideas and problems as an Issue.
+
+### Extending V̂enu
+
+See [developer documentation](./docs/developer.md) if you are interested in customizing the behaviour of V̂enu.
+
+Please contribute your solutions back to the project.
+
+If you require any additional functionality or further elements of V̂enu exposed please [open an issue](https://github.com/Timoses/vim-venu/issues/new).
+
 
 ## The ^ in V̂enu ?
 I personally mapped `:VenuPrint` to the `^` key on a German keyboard which is easily reachable. Hence, the name.

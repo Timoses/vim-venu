@@ -6,29 +6,6 @@ else
     let s:VERSION = readfile(s:venupaths[0].'/version')[0]
 endif
 
-" a menu should have the following structure:
-" {
-"   name: <string>,
-"   pos_pref:
-"       Positional preference. Menus/Items with a higher 'priority' win.
-"       Losers are positioned after winner.
-"       Position preference of '0' means no preference.
-"   priority:
-"       Order and positional priority. Lower numbers have higher priority.
-"       Priority of '0' means no priority.
-"   filetypes: <[<string>, <string>, ...],
-"   items: [
-"    { name: <string>,
-"           Name of the menu.
-"      cmd: <string> or <funcref> or <menu>
-"           Cmd to be executed or menu to be displayed when selecting this
-"           item.
-"      pos_pref: <number>
-"           See above menu property 'pos_pref'.
-"      priority: <number>
-"           See above menu property 'priority'.
-"      filetypes: [<string>, <string>, ...]
-"    }]
 let s:menus=[]
 
 " Optional arguments '...': pos_pref, priority
