@@ -99,6 +99,12 @@ Calling `:VenuPrint` again will close the menu without any action.
 
 ## Documentation
 
+See also:
+  [Importing vim menus to V̂enu](./docs/import.md)
+**|**
+  [V̂enu developer documentation](./docs/developer.md)
+
+
 ----
 ```vim
 venu#create(name, [pos_pref, priority])
