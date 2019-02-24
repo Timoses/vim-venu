@@ -205,10 +205,12 @@ endfunction
 function! venu#print() abort
     let s:printCallback = get(g:, "venu_print_callback",
                 \ function("s:print"))
+    let s:formatEntrySelectorCallback = get(g:, "venu_format_entry_selector_callback",
+                \ function("s:formatEntrySelector"))
+    let s:formatEntryNameCallback = get(g:, "venu_format_entry_name_callback",
+                \ function("s:formatEntryName"))
     let s:selectCallback = get(g:, "venu_select_callback",
                 \ function("s:select"))
-    let s:formatEntryCallback = get(g:, "venu_format_entry_callback",
-                \ function("s:formatEntry"))
 
     let l:availableMenus = filter(copy(s:menus),
             \"len(v:val.filetypes) == 0 || index(v:val.filetypes, &ft) >= 0")
@@ -223,7 +225,7 @@ function! venu#print() abort
     endif
 endfunction
 
-function! s:startVenu(name, itemsOrMenus)
+function! s:startVenu(name, itemsOrMenus) abort
     let l:choices = filter(copy(a:itemsOrMenus),
             \"len(v:val.filetypes)==0 || index(v:val.filetypes, &ft) >= 0")
     call s:printCallback(a:name, l:choices)
@@ -241,20 +243,32 @@ function! s:print(name, itemsOrMenus) abort
 
     let l:menuIterator = 1
     for item in a:itemsOrMenus
-        echo s:formatEntryCallback(l:menuIterator, item)
+        echo s:formatEntrySelectorCallback(a:itemsOrMenus, l:menuIterator) . '. '
+                \ . s:formatEntryNameCallback(item)
         let l:menuIterator = l:menuIterator + 1
     endfor
     echo "0. Exit"
 endfunction
 
-function! s:formatEntry(rowNum, entry)
-        return a:rowNum . ". " . a:entry.name .
-                    \ (&verbose > 0 ? " (pos_pref: " . a:entry.pos_pref .
-                    \ " , priority: " . a:entry.priority . ")"
-                    \ : "")
+function! s:formatEntrySelector(choices, rowNum) abort
+    if len(a:choices) > 9
+        let l:offset = a:rowNum + 10 + a:rowNum / 10
+        let l:offset = 10 + (l:offset - 10)/10
+        let a:choices[a:rowNum-1].selector = l:offset + a:rowNum
+    else
+        let a:choices[a:rowNum-1].selector = a:rowNum
+    endif
+    return a:choices[a:rowNum-1].selector
 endfunction
 
-function! s:select(choices)
+function! s:formatEntryName(entry) abort
+    return a:entry.name .
+        \ (&verbose > 0 ? " (pos_pref: " . a:entry.pos_pref .
+        \ " , priority: " . a:entry.priority . ")"
+        \ : "")
+endfunction
+
+function! s:select(choices) abort
     let l:char = nr2char(getchar())
 
     if l:char == "\<ESC>" || l:char == 0
@@ -262,18 +276,41 @@ function! s:select(choices)
         return
     endif
 
+    let l:char2 = 0
+    if len(a:choices) > 9
+        let l:char2 = nr2char(getchar())
+    end
+
+    function! s:getIndex(choices, c1, c2) abort
+        let l:selectors = map(copy(a:choices), { idx, val -> len(val.selector) > 1
+            \ ? [ val.selector[0], val.selector[1] ]
+            \ : [ val.selector[0], 0 ] })
+
+        let l:index = index(l:selectors, [a:c1, a:c2])
+        return l:index
+    endfunction
+
+    let l:index = s:getIndex(a:choices, l:char, l:char2)
+
     " Poll input as long as input invalid
-    while l:char <= 0 || l:char > len(a:choices)
+    while l:char <= 0 || l:index == -1
         let l:char = nr2char(getchar())
+
         if l:char == "\<ESC>" || l:char == 0
             redrawstatus
             return
         endif
+
+        if len(a:choices) > 9
+            let l:char2 = nr2char(getchar())
+        endif
+
+        let l:index = s:getIndex(a:choices, l:char, l:char2)
     endwhile
 
     redrawstatus
 
-    return a:choices[l:char-1]
+    return a:choices[l:index]
 endfunction
 
 function! s:executeSelection(choice)
