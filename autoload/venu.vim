@@ -51,8 +51,7 @@ function! venu#addItem(menu, name, cmd, ...) abort
                                 \'priority': l:priority,
                                 \'filetypes': l:filetypes}
 
-    call add(a:menu.items, l:newitem)
-    call s:sort(a:menu.items)
+    call s:add(a:menu.items, l:newitem)
 endfunction
 
 function! venu#register(menu, ...) abort
@@ -71,32 +70,36 @@ function! venu#register(menu, ...) abort
         endif
     endif
 
-    let l:found = index(map(copy(s:menus), "v:val.name"), a:menu.name)
+    call extend(a:menu.filetypes, l:filetypes)
 
-    if l:found >= 0
-        let l:menu = get(s:menus, l:found)
-
-        " Calling register without ft specification -> show for all
-        if len(l:filetypes) == 0
-            let l:menu.filetypes = []
-        else
-            for ft in l:filetypes
-                if index(l:menu.filetypes, ft) < 0
-                    call add(l:menu.filetypes, ft)
-                endif
-            endfor
-        endif
-
-        call s:mergeMenus(l:menu, a:menu)
-    else
-        call extend(a:menu.filetypes, l:filetypes)
-        call add(s:menus, a:menu)
-        call s:sort(s:menus)
-    endif
+    call s:add(s:menus, a:menu)
 endfunction
 
 function! venu#unregisterAll()
     call remove(s:menus, 0, -1)
+endfunction
+
+function! s:add(to, itemOrMenu)
+    let l:foundIdx = index(map(copy(a:to), "v:val.name"), a:itemOrMenu.name)
+
+    if l:foundIdx >= 0
+        let l:found = get(a:to, l:foundIdx)
+        call s:merge(l:found, a:itemOrMenu)
+    else
+        call add(a:to, a:itemOrMenu)
+        call s:sort(a:to)
+    endif
+endfunction
+
+function! s:merge(targetItemOrMenu, merging) abort
+    if s:isMenu(a:targetItemOrMenu) && s:isMenu(a:merging)
+        call s:mergeMenus(a:targetItemOrMenu, a:merging)
+    elseif s:isItem(a:targetItemOrMenu) && s:isItem(a:merging)
+        call s:mergeItems(v:null, a:targetItemOrMenu, a:merging)
+    else
+        " TODO: This would be possible when no filetypes collide
+        echoerr "Currently unable to merge item and menu"
+    endif
 endfunction
 
 " Merges 'merging' into 'target'.
@@ -108,7 +111,9 @@ endfunction
 "   * priority, pos_pref and filetypes of the item are adjusted as above
 "   * same cmd -> no issue
 "   * cmd differs -> only allow if items' filetypes don't collide
-function! s:mergeMenus(target, merging)
+function! s:mergeMenus(target, merging) abort
+    call assert_true(s:isMenu(a:target) && s:isMenu(a:merging), "Only merging menus allowed in mergeMenus!")
+
     let a:target.pos_pref =
                 \ min([a:target.pos_pref, a:merging.pos_pref]) == 0 ?
                 \ max([a:target.pos_pref, a:merging.pos_pref]) :
@@ -138,43 +143,10 @@ function! s:mergeMenus(target, merging)
                 let l:found.filetypes =
                         \ uniq(sort(l:found.filetypes + merge.filetypes))
                 call s:mergeMenus(l:found.cmd, merge.cmd)
+            elseif s:isItem(l:found) && s:isItem(merge)
+                call s:mergeItems(a:target, l:found, merge)
             else
-                let l:samefts = []
-                for ft in merge.filetypes
-                    let l:sameftIdx = index(l:found.filetypes, ft)
-                    if l:sameftIdx >= 0
-                        call add(l:samefts, get(l:found.filetypes, l:sameftIdx))
-                    endif
-                endfor
-
-                " Filetype collision?
-                if len(l:samefts) > 0 || l:found.filetypes == merge.filetypes
-                    if l:found.cmd != merge.cmd
-                        echoerr "Collision of menu items: Same name used: \"" . merge.name . "\" for the same filetypes \"" . string(l:samefts)
-                    else
-                        " TODO: Could also create a new item which is valid
-                        " only for the l:samefts and do below merging.
-                        " Then, for the other filetypes of each item, the
-                        " settings can remain the same (remove l:samefts from
-                        " l:found and merge items' filetypes)
-                        let l:found.pos_pref =
-                            \ min([l:found.pos_pref, merge.pos_pref]) == 0 ?
-                            \ max([l:found.pos_pref, merge.pos_pref]) :
-                            \ min([l:found.pos_pref, merge.pos_pref])
-                        let l:found.priority =
-                            \ min([l:found.priority, merge.priority]) == 0 ?
-                            \ max([l:found.priority, merge.priority]) :
-                            \ min([l:found.priority, merge.priority])
-                        let l:found.filetypes =
-                            \ uniq(sort(l:found.filetypes + merge.filetypes))
-                    endif
-
-                else
-                    " If no filetype collision exists, merging these
-                    " items won't matter as both items will never be displayed
-                    " together.
-                    call add(a:target.items, merge)
-                endif
+                echoerr "Currently unable to merge item and menu together"
             endif
         else
             call add(a:target.items, merge)
@@ -182,6 +154,52 @@ function! s:mergeMenus(target, merging)
     endfor
 
     call s:sort(a:target.items)
+endfunction
+
+" Merges two items (target and merging) together
+function! s:mergeItems(targetMenu, target, merging) abort
+    call assert_true(s:isItem(a:target) && s:isItem(a:merging), "Only merging items allowed in mergeItems!")
+
+    if s:isMenu(a:target.cmd) && s:isMenu(a:merging.cmd)
+        call s:mergeMenus(a:target.cmd, a:merging.cmd)
+        return
+    endif
+
+    let l:samefts = []
+    for ft in a:merging.filetypes
+        let l:sameftIdx = index(a:target.filetypes, ft)
+        if l:sameftIdx >= 0
+            call add(l:samefts, get(a:target.filetypes, l:sameftIdx))
+        endif
+    endfor
+
+    " Filetype collision?
+    if len(l:samefts) > 0 || a:target.filetypes == a:merging.filetypes
+        if a:target.cmd != a:merging.cmd
+            echoerr "Collision of menu items: Same name used: \"" . a:merging.name . "\" for the same filetypes \"" . string(l:samefts)
+        else
+            " TODO: Could also create a new item which is valid
+            " only for the l:samefts and do below merging.
+            " Then, for the other filetypes of each item, the
+            " settings can remain the same (remove l:samefts from
+            " a:target and a:merging items' filetypes)
+            let a:target.pos_pref =
+                \ min([a:target.pos_pref, a:merging.pos_pref]) == 0 ?
+                \ max([a:target.pos_pref, a:merging.pos_pref]) :
+                \ min([a:target.pos_pref, a:merging.pos_pref])
+            let a:target.priority =
+                \ min([a:target.priority, a:merging.priority]) == 0 ?
+                \ max([a:target.priority, a:merging.priority]) :
+                \ min([a:target.priority, a:merging.priority])
+            let a:target.filetypes =
+                \ uniq(sort(a:target.filetypes + a:merging.filetypes))
+        endif
+    else
+        " If no filetype collision exists, merging these
+        " items won't matter as both items will never be displayed
+        " together.
+        call add(a:target.items, a:merging)
+    endif
 endfunction
 
 function! venu#print() abort
@@ -347,10 +365,19 @@ function! s:sort(items)
 endfunction
 
 function! s:isMenu(object)
+    return s:isVenuObject(a:object)
+            \&& has_key(a:object, 'items') && type(a:object.items)==v:t_list
+endfunction
+
+function! s:isItem(object)
+    return s:isVenuObject(a:object)
+            \&& has_key(a:object, 'cmd')
+endfunction
+
+function! s:isVenuObject(object)
     return type(a:object)==v:t_dict && has_key(a:object, 'name')
             \&& has_key(a:object, 'pos_pref') && type(a:object.pos_pref)==v:t_number
             \&& has_key(a:object, 'priority') && type(a:object.priority)==v:t_number
             \&& has_key(a:object, 'filetypes') && type(a:object.filetypes)==v:t_list
-            \&& has_key(a:object, 'items') && type(a:object.items)==v:t_list
 endfunction
 
