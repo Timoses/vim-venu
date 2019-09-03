@@ -171,4 +171,3 @@ I personally mapped `:VenuPrint` to the `^` key on a German keyboard which is ea
 ## Alternatives
 * [quickmenu](https://github.com/skywind3000/quickmenu.vim)
     * opens a menu on the side, can use cmdline menu as well
-    * no support for submenus
